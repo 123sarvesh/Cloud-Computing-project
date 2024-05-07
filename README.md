@@ -1,319 +1,241 @@
-# Cloud-Computing-project
-# Service Workbench on AWS
+# Handprint
 
-## Maintenance Notice
+The _**Hand**written **P**age **R**ecognit**i**o**n** **T**est_ is a command-line program that invokes HTR (handwritten text recognition) services on images of document pages.  It can produce annotated images showing the results, compare the recognized text to expected text, save the HTR service results as JSON and text files, and more.
 
-Service Workbench on AWS has been moved to maintenance mode. While in maintenance, we will not add new features to this solution guidance. Security engagement should be directed to AWS Security at aws-security@amazon.com. If you are new to Service Workbench on AWS, we recommend that you explore using Research and Engineering Studio on AWS (https://aws.amazon.com/hpc/res/). You can get started by following instructions in the Research and Engineering Studio User Guide (https://docs.aws.amazon.com/res/latest/ug/overview.html). If you are an existing customer of Service Workbench on AWS and have additional questions or need immediate help, please contact your AWS Account team.
-
-## Overview
-
-Service Workbench on AWS is a cloud solution that enables IT teams to provide secure, repeatable, and federated control of access to data, tooling, and compute power that researchers need. With Service Workbench, researchers no longer have to worry about navigating cloud infrastructure. They can focus on
-achieving research missions and completing essential work in minutes, not months, in configured research environments.
-
-With Service Workbench on AWS, researchers can quickly and securely stand up research environments and conduct experiments with peers from other institutions. By automating the creation of baseline research setups, simplifying data access, and providing price transparency, researchers and IT departments save time, which they can reinvest in following cloud best practices and achieving research
-reproducibility.
-
-## Service Workbench architecture
-
-Service Workbench integrates existing AWS services, such as Amazon CloudFront, AWS Lambda, and AWS Step Functions. Service Workbench enables you to create your own custom templates and share those templates with other organizations. To provide cost transparency, Service Workbench has been integrated with AWS Cost Explorer, AWS Budgets and AWS Organizations.
-
-There are three types of Studies available in Service Workbench: My Studies, Organizational Studies and Open Data. Once you have created a Study you can upload files to it. Organizational Studies can be shared with other members in the organization. Owners of a study can amend the permissions of the study to grant access to other users. Once you have found the study or studies in which you are interested to perform research, you can deploy a workspace to attach the data to and conduct your research.
-
-### Main account
-
-This is the account where Service Workbench infrastructure is deployed.
+[![Latest release](https://img.shields.io/github/v/release/caltechlibrary/handprint.svg?style=flat-square&color=b44e88&label=Latest%20release)](https://github.com/caltechlibrary/handprint/releases)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg?style=flat-square)](https://choosealicense.com/licenses/bsd-3-clause)
+[![Python](https://img.shields.io/badge/Python-3.8+-brightgreen.svg?style=flat-square)](http://shields.io)
+[![GitHub stars](https://img.shields.io/github/stars/caltechlibrary/handprint.svg?style=flat-square&color=lightgray&label=Stars)](https://github.com/caltechlibrary/handprint/stargazers)
+[![DOI](https://img.shields.io/badge/dynamic/json.svg?label=DOI&style=flat-square&colorA=gray&colorB=navy&query=$.metadata.doi&uri=https://data.caltech.edu/api/record/20207)](https://data.caltech.edu/records/20207)
+[![PyPI](https://img.shields.io/pypi/v/handprint.svg?style=flat-square&color=orange&label=PyPI)](https://pypi.org/project/handprint/)
 
 
-### Hosting account
+## Table of Contents
 
-This is the account where compute resources are deployed.
+* [Introduction](#introduction)
+* [Installation and configuration](#installation-and-configuration)
+   * [Install Handprint on your computer](#-install-handprint-on-your-computer)
+   * [Add cloud service credentials](#-add-cloud-service-credentials)
+* [Usage](#︎usage)
+* [Getting help](#getting-help)
+* [Contributing](#contributing)
+* [License](#license)
+* [Authors and history](#authors-and-history)
+* [Acknowledgments](#︎acknowledgments)
 
-## Service Workbench components
+<img align="right" width="480px" src="https://raw.githubusercontent.com/caltechlibrary/handprint/develop/.graphics/glaser-example-google.jpg">
 
-Service Workbench contains the following components.You can find these components under the <service_workbench>/main/solution folder.
+## Introduction
 
-**Infrastructure**: The following AWS resources are created as part of this component deployment:
+Handprint (_**Hand**written **P**age **R**ecognit**i**o**n** **T**est_) is a tool for comparing alternative services for offline [handwritten text recognition (HTR)](https://en.wikipedia.org/wiki/Handwriting_recognition).  It was developed for use with documents from the [Caltech Archives](http://archives.caltech.edu), but it is completely independent and can be applied to any images of text documents.
 
-- S3 bucket is used for logging the following actions:
-  - Study data uploads
-  - Accessing CloudFormation templates bucket
-  - Accessing Cloudfront distribution service
-  - To host the static Service Workbench website.
-- Cloudfront distribution service to accelerate Service Workbench website access based on user location.
-  **Backend**: Once the environment has been deployed, the backend component creates and configures the following AWS resources:
-- S3 bucket: + To store uploaded study data. This bucket also receives an encryption key from AWS Key Management Service for encrypting this data and making it available to the Service Workbench website. + To store bootstrap scripts. These scripts will be used to launch the workspace instances like SageMaker, EC2, EMR. + This component also sets up some IAM roles and policies for accessing lambda functions and invoking step functions. + DynamoDB: This database will be used to store information concerning user authentication, AWS accounts, workflows, access tokens, study data etc.
-  This component is also responsible for deploying the following lambda functions/services: + Authentication layer handler - Handles the authentication layer for API handlers. + Open data scrape handler - Handles scraping the metadata from the AWS open data registry. + API handler - Provides a path for public and protected APIs. + Workflow loop runner - Invoked by AWS step functions.
-  **Edge Lambda**: An inline Javascript interceptor function that adds security headers to the Cloudfront output response. This function is declared inline because the code requires API Gateway URL for the backend APIs.
-  **Machine images**: Deploys spot instances using machine images for EC2 and EMR templates.
-  **Prepare master accounts**: Creates a master IAM role for organization access.
-  **Post Deployment**: Creates an IAM role for the post deployment function with policies granting permission to S3 buckets, DynamoDB tables, KMS encryption key, Cloudfront and lambda functions.
-  **User Interface**: Contains code used to create and support the UI functionality of the application.
+Handprint can generate images with recognized text overlaid over them to visualize the results.  The image at right shows an example.  Among other features, the software can also display bounding boxes, threshold results by confidence values, compare full-text results to expected/ground-truth results, and output the raw results from an HTR service as JSON and text files. It can work with individual images, directories of images, and URLs pointing to images on remote servers. Finally, Handprint can use multiple processor threads for parallel execution.
 
-The solution also includes a Continuous Integration/Continuous Delivery feature:
+Services supported include Google's [Google Cloud Vision API](https://cloud.google.com/vision/docs/ocr), Microsoft's Azure [Computer Vision API](https://azure.microsoft.com/en-us/services/cognitive-services/computer-vision/), and Amazon's [Textract](https://aws.amazon.com/textract/) and [Rekognition](https://aws.amazon.com/rekognition/).  The framework for connecting to services could be expanded to support others as well (and contributions are welcome!).
 
-- main/cicd/cicd-pipeline
-- main/cicd/cicd-source
 
-# Installing Service Workbench
+## Installation and configuration
 
-## Accessing Service Workbench Documentation
-
-Service Workbench documentation can be accessed in the PDF format or by visiting the AWS Solution Implementation Guide.
-
-### Implementation Guide
-For information on installing Service Workbench on AWS, please visit the [AWS Solutions Implementation Guide](https://docs.aws.amazon.com/solutions/latest/service-workbench-on-aws/solution-overview.html).
-
-- [Service Workbench Solution Overview](https://docs.aws.amazon.com/solutions/latest/service-workbench-on-aws/solution-overview.html)
-- [Service Workbench  Architecture Overview](https://docs.aws.amazon.com/solutions/latest/service-workbench-on-aws/architecture-overview.html)
-- [Service Workbench Plan Your Deployment](https://docs.aws.amazon.com/solutions/latest/service-workbench-on-aws/plan-your-deployment.html)
-- [Service Workbench Deploy The Solution](https://docs.aws.amazon.com/solutions/latest/service-workbench-on-aws/deploy-the-solution.html)
-- [Service Workbench Update The Solution](https://docs.aws.amazon.com/solutions/latest/service-workbench-on-aws/update-the-solution.html)
-- [Service Workbench Uninstall The Solution](https://docs.aws.amazon.com/solutions/latest/service-workbench-on-aws/uninstall-the-solution.html)
-
-### Documentation PDFs
-
-You can view the online documentation if you do not have Service Workbench locally installed on your machine. Click the following links to access the documentation:
-
-- [Service Workbench Implementation Guide](./docs/service-workbench-on-aws-implementation-guide.pdf), formerly known as the Installation Guide
-- [Service Workbench Configuration Guide](./docs/Service_Workbench_Configuration_Guide.pdf)
-- [Service Workbench Post Deployment Guide](./docs/Service_Workbench_Post_Deployment_Guide.pdf)
-- [Service Workbench User's Guide](./docs/Service_Workbench_User_Guide.pdf)
-
-## Software requirements
-
-- **Node.Js:** [Node.js v18.x](https://nodejs.org/en/) or later is required.
-- **PNPM:** Install [pnpm](https://pnpm.js.org/en/) as follows
-
-```bash
-npm install -g pnpm@latest-8
+The instructions below assume you have a Python interpreter version 3.8 or higher installed on your computer; if that's not the case, please first install Python and familiarize yourself with running Python programs on your system. If you are unsure of which version of Python you have, you can find out by running the following command in a terminal and inspecting the results:
+```sh
+# Note: on Windows, you may have to use "python" instead of "python3"
+python3 --version
 ```
 
-- **Go:** You also need to install [Go 1.13.7](https://golang.org/doc/install) or later. `Go` is used for creating a multipart S3 downloader tool that is used in AWS Service Catalog EC2 Windows based research environments.
+Note for Mac users: if you are using macOS Catalina (10.15) or later and have never run `python3`, then the first time you do, macOS will ask you if you want to install the macOS command-line developer tools.  Go ahead and do so, as this is the easiest way to get a recent-enough Python&nbsp;3 on those systems.
 
-For more information, refer to the **Prerequisites** section of the Service Workbench Deployment Guide.
+Handprint includes several adapters for working with cloud-based HTR services from Amazon, Google, and Microsoft, but does not include credentials for using the services.  To be able to use Handprint, you must **both** install a copy of Handprint on your computer **and** supply your copy with credentials for accessing the cloud services you want to use.  See below for more.
 
-## Creating a configuration file
 
-To create the initial settings files, take a look at the example.yml settings file in main/config/settings/example.yml and create your own copy.
-The stage is either 'example' or your username. This method should be used only for the very first time you install this solution.
-In the rest of this README, \$STAGE is used to designate the stage.
+### ⓵&nbsp; _Install Handprint on your computer_
 
-For more information, refer to the **Prepare Main Configuration File** section of the Service Workbench Deployment Guide.
+#### Approach 1: using the standalone Handprint executables
 
-## Deploying Service Workbench
+Beginning with version 1.5.1, runnable self-contained single-file executables are available for select operating system and Python version combinations &ndash; to use them, you **only** need a Python&nbsp;3 interpreter and a copy of Handprint, but **do not** need to run `pip install` or other steps. Please click on the relevant heading below to learn more.
 
-You can run the Service Workbench installation from your local machine or an Amazon Elastic Compute Cloud (Amazon EC2) instance. The installation involves the following:
+<details><summary><img alt="macOS" align="bottom" height="26px" src="https://github.com/caltechlibrary/handprint/raw/main/.graphics/mac-os-32.png">&nbsp;<strong>macOS</strong></summary>
 
-- Download and unpack the Service Workbench code.
-- Choose a stage name.
-- Optionally, edit the configuration file.
-- Run the main deployment script: environment-deploy.sh.
-- Run the post-deployment script: master-account-deploy.sh.
-- Log in and add an AWS account to your Service Workbench deployment.
-- Create local user accounts.
+Visit the [Handprint releases page](https://github.com/caltechlibrary/handprint/releases) and look for the ZIP files with names such as (e.g.) `handprint-1.5.4-macos-python3.8.zip`. Then:
+1. Download the one matching your version of Python
+2. Unzip the file (if your browser did not automatically unzip it for you)
+3. Open the folder thus created (it will have a name like `handprint-1.5.4-macos-python3.8`)
+4. Look inside for `handprint` and move it to a location where you put other command-line programs (e.g., `/usr/local/bin`)
 
-Now, let's perform an initial deployment. Note that when invoked without parameters, this will assume a deployment stage of \$USER, which is the logged-in user name on Mac and Linux systems.
+</details><details><summary><img alt="Linux" align="bottom" height="26px" src="https://github.com/caltechlibrary/handprint/raw/main/.graphics/linux-32.png">&nbsp;<strong>Linux</strong></summary>
 
-```bash
-scripts/environment-deploy.sh
+Visit the [Handprint releases page](https://github.com/caltechlibrary/handprint/releases) and look for the ZIP files with names such as (e.g.) `handprint-1.5.4-linux-python3.8.zip`. Then:
+1. Download the one matching your version of Python
+2. Unzip the file (if your browser did not automatically unzip it for you)
+3. Open the folder thus created (it will have a name like `handprint-1.5.4-linux-python3.8`)
+4. Look inside for `handprint` and move it to a location where you put other command-line programs (e.g., `/usr/local/bin`)
+
+</details><details><summary><img alt="Windows" align="bottom" height="26px" src="https://github.com/caltechlibrary/handprint/raw/main/.graphics/os-windows-32.png">&nbsp;<strong>Windows</strong></summary>
+
+Standalone executables for Windows are not available at this time. If you are running Windows, please use one of the other methods described below.
+
+</details>
+
+
+#### Approach 2: using `pipx`
+
+You can use [pipx](https://pypa.github.io/pipx/) to install Handprint. Pipx will install it into a separate Python environment that isolates the dependencies needed by Handprint from other Python programs on your system, and yet the resulting `handprint` command wil be executable from any shell &ndash; like any normal application on your computer. If you do not already have `pipx` on your system, it can be installed in a variety of easy ways and it is best to consult [Pipx's installation guide](https://pypa.github.io/pipx/installation/) for instructions. Once you have pipx on your system, you can install Handprint with the following command:
+```sh
+pipx install handprint
 ```
 
-You can override the default stage name of \$USER if you prefer. For example, if you want your stage name to be `qa`, then:
+Pipx can also let you run Handprint directly using `pipx run handprint`, although in that case, you must always prefix every Handprint command with `pipx run`.  Consult the [documentation for `pipx run`](https://github.com/pypa/pipx#walkthrough-running-an-application-in-a-temporary-virtual-environment) for more information.
 
-1. create main/config/settings/qa.yml
-2. run `scripts/environment-deploy.sh qa`
 
-## Deploying Service Workbench components individually
+#### Approach 3: using `pip`
 
-In case you have made some changes to the Service Workbench components after the initial deployment, use these commands to re-deploy these components individually. There won't be any change to your installation if you have not changed any of the components.
-
-Following an initial successful deployment, you can subsequently deploy updates to the infrastructure, backend, and post-deployment components as follows:
-
-```bash
-cd main/solution/<component>
-pnpx serverless deploy -s $STAGE
-cd -
+If you prefer, you can install Handprint with [pip](https://pip.pypa.io/en/stable/installing/).  If you don't have `pip` package or are uncertain if you do, please consult the [pip installation instructions](https://pip.pypa.io/en/stable/installation/). Then, to install or upgrade Handprint from the Python package repository, run the following command:
+```sh
+python3 -m pip install handprint --upgrade
 ```
 
-To run (rerun) the post-deployment steps:
 
-```bash
-cd main/solution/post-deployment
-pnpx serverless invoke -f postDeployment -s $STAGE
-cd -
+### ⓶&nbsp; _Add cloud service credentials_
+
+A one-time configuration step is needed for each cloud-based HTR service after you install Handprint on a computer.  This step supplies Handprint with credentials to access the services.  In each case, the same command format is used:
+```sh
+handprint -a SERVICENAME CREDENTIALSFILE.json
 ```
 
-To re-deploy the UI
+_SERVICENAME_ must be one of the service names printed by running `handprint -l`, and `CREDENTIALSFILE.json` must have one of the formats discussed below.  When you run this command, Handprint copies `CREDENTIALSFILE.json` to a private location, and thereafter uses the credentials to access _SERVICENAME_.  (The private location is different on different systems; for example, on macOS it is `~/Library/Application Support/Handprint/`.)  Examples are given below.
 
-```bash
-cd main/solution/ui
-pnpx serverless package-ui --stage $STAGE --local=true
-pnpx serverless package-ui --stage $STAGE
-pnpx serverless deploy-ui --stage $STAGE --invalidate-cache=true
-cd -
+
+#### Microsoft
+
+Microsoft's approach to credentials in Azure involves the use of [subscription keys](https://docs.microsoft.com/en-us/azure/cognitive-services/computer-vision/vision-api-how-to-topics/howtosubscribe).  The format of the credentials file for Handprint needs to contain two fields:
+
+```json
+{
+ "subscription_key": "YOURKEYHERE",
+ "endpoint": "https://ENDPOINT"
+}
 ```
 
-**Note**: These are optional steps.
+The value `"YOURKEYHERE"` will be a string such as `"18de248475134eb49ae4a4e94b93461c"`, and it will be associated with an endpoint URI such as `"https://westus.api.cognitive.microsoft.com"`.  To obtain a key and the corresponding endpoint URI, visit [https://portal.azure.com](https://portal.azure.com) and sign in using your account login.  (Note: you will need to turn off browser security plugins such as Ad&nbsp;Block and uMatrix if you have them, or else the site will not work.)  Once you are authenticated to the Azure portal, you can create credentials for using Azure's machine-learning services.  Some notes all about this can be found in the [Handprint project Wiki pages on GitHub](https://github.com/caltechlibrary/handprint/wiki/Getting-Microsoft-Azure-credentials).
 
-## Viewing deployment information
-
-To view information about the deployed components (e.g. CloudFront URL, root password), run the
-following, where `[stage]` is the name of the environment (defaults to `$STAGE` if not provided):
-
-```bash
-scripts/get-info.sh [stage]
+Once you have obtained both a key and an endpoint URI, use a text editor to create a JSON file in the simple format shown above, save that file somewhere on your computer (for the sake of this example, assume it is `myazurecredentials.json`), and use the command discussed above to make Handprint copy the credentials file:
+```sh
+handprint -a microsoft myazurecredentials.json
 ```
 
-## Running Service Workbench on a local server
+#### Google
 
-Once you have deployed the app and the UI, you can start developing locally on your computer.
-You will be running a local server that uses the same lambda functions code. To start local development, run the following commands to run a local server:
+Credentials for using a Google service account need to be stored in a JSON file that contains many fields.  The overall format looks like this:
 
-```bash
-cd main/solution/backend
-pnpx serverless offline -s $STAGE
-cd -
+```json
+{
+  "type": "service_account",
+  "project_id": "theid",
+  "private_key_id": "thekey",
+  "private_key": "-----BEGIN PRIVATE KEY-----anotherkey-----END PRIVATE KEY-----\n",
+  "client_email": "emailaddress",
+  "client_id": "id",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "someurl"
+}
 ```
 
-Then, in a separate terminal, run the following commands to start the ui server and open up a browser:
-
-```bash
-cd main/solution/ui
-pnpx serverless start-ui -s $STAGE
-cd -
+Getting one of these is summarized in the Google Cloud docs for [Creating a service account](https://cloud.google.com/docs/authentication/), but more explicit instructions can be found in the [Handprint project Wiki pages on GitHub](https://github.com/caltechlibrary/handprint/wiki/Getting-Google-Cloud-credentials).  Once you have downloaded a Google credentials file from Google, save the file somewhere on your computer (for the sake of this example, assume it is `mygooglecredentials.json`), and use the command discussed above to make Handprint copy the credentials file:
+```sh
+handprint -a google mygooglecredentials.json
 ```
 
----
 
-For more information, refer to _Service Workbench Installation Guide_.
+#### Amazon
 
-## Using Service Workbench
+Amazon credentials for AWS take the form of two alphanumeric strings: a _key id_ string and a _secret access key_ string.  In addition, the service needs to be invoked with a region identifier.  For the purposes of Handprint, these should be stored in a JSON file with the following format:
 
-## Creating a new user in Service Workbench
-
-Once Service Workbench is fully deployed, the console will output the Website URL and Root Password for Service Workbench. You can log in by navigating to the Website URL in any browser, and then using the username root and the Root Password given by the console. Please note that logging as the root user is highly discouraged, and should only be used for initial setup. You can create a new user by clicking the **Users** tab on the left, then **Add Local User**. Follow the instructions given to create the user (you can leave the Project field blank for now), then log out of the root account and into your new user account.
-
-Adding a local user should only be done in test environments. We highly recommend using an IDP for prod environments. For more details on how to set up an IDP, click [here](/docs/docs/user_guide/sidebar/admin/auth/introduction.md)
-
-## Linking an existing AWS account
-
-Once in your user account, you'll need to link your AWS account. Navigate to **AWS Accounts** in the left bar, then click the **AWS Accounts** tab. From here, you can create an AWS account, or link an existing one.
-
-To create a new AWS account, you'll need the **Master Role ARN** value, which you can get by contacting the owner of your Organization's master account. If you are the owner, you can find it in the Roles section of [AWS IAM](https://aws.amazon.com/iam/) from the [AWS management console](https://aws.amazon.com/console/).
-
-To link an existing account, follow the instructions listed. You'll need the following credentials:
-
-- **AWS Account ID** ([Where can I find my AWS Account ID?](https://www.apn-portal.com/knowledgebase/articles/FAQ/Where-Can-I-Find-My-AWS-Account-ID))
-- **Role ARN**: An ARN to an IAM Role to use when launching resources using Service Workbench. You can find or create an IAM Role in the IAM service from the [AWS management console](https://aws.amazon.com/console/).
-- **AWS Service Catalog Role ARN**: Another ARN to an IAM Role, which will be used for launching resources using Service Workbench's Service Catalog. This entry can be the same as the above if you choose.
-- **VPC ID**: The ID of the VPC your AWS account uses. You can find this in the [VPC Service](https://aws.amazon.com/vpc/) of the [AWS management console](https://aws.amazon.com/console/).
-- **Subnet ID**: The ID for the subnet of the VPC to use. This can also be found in the [VPC Service](https://aws.amazon.com/vpc/) of the [AWS management console](https://aws.amazon.com/console/).
-- **KMS Encryption Key ARN**: The ARN of the KMS Encryption Key to use for the AWS Account. You can find or create a KMS Encryption Key in the [KMS service](https://aws.amazon.com/kms/) of the [AWS management console](https://aws.amazon.com/console/).
-
-## Creating a Workspace
-
-### Overview
-
-Now that you have a user and have a working AWS account, we can start generating workspaces. Workspaces allow you to use AWS resources without having to manually set up and configure them. In order to create a workspace, your account has to be associated with a project, which has to be created under an index.
-
-### Creating a project
-
-1. Navigate to the **Accounts page** and choose the **Indexes** tab.
-2. Choose **Add Index**. Each project you create is associated with an index, allowing you to group multiple projects together under a single index linked to your AWS account.
-3. Create a project by choosing the **Projects** tab.
-4. Choose **Add Project**.
-5. Associate it with the index you just created, and assign yourself as the project administrator.
-6. Navigate to the **Users** page to see that the project has been successfully associated with your account.
-
-### Creating a workspace
-
-Pre-requisites: Before creating a workspace, you must setup Service Catalog. Refer to the _Import a Product_ section of the Service Workbench Deployment Guide for information on installing Service Catalog.
-
-1. In the Workspaces tab, choose **Create Research Workspace**. A menu with options is displayed.  
-   **Note**: Service Workbench automatically provisions AWS resources according to your selection, so you can run your projects on AWS without having to worry about the setup.
-2. Choose the desired platform and then choose Next.
-3. Enter appropriate values for the field names (leave 'Restricted CIDR' as-is if you don't know what it is) and select a configuration.  
-    **Note**: Each configuration lists the details for its instance--On Demand instances are more expensive than Spot instances, but they're available whenever you need them. For more details on pricing and configurations, refer to the [Instance Purchasing Options](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html) and the [AWS Pricing](https://aws.amazon.com/pricing/) pages.
-4. Your workspace may take some time to launch. Once it is up and running, you can connect to it by choosing Connect. For more details, see the following documentation pages:
-
-   - AWS SageMaker: Service Workbench takes care of provisioning the workspace for you, so you can jump straight to working with SageMaker Notebooks. For more information, see the [SageMaker Getting Started Guide](https://docs.aws.amazon.com/sagemaker/latest/dg/gs-console.html) (you can jump straight to Step 4).
-   - AWS ElasticMapReduce (EMR): Service Workbench takes care of setting up the EMR instance for you, so you can jump straight to working with EMR Notebooks. A password may be required to access the EMR Notebooks. By default, this password is `go-research-on-aws`. For more information on using EMR Notebooks, see [Using EMR Notebooks](https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-managed-notebooks.html).
-
-   To change the default password for Jupyter Notebook instances, contact your Solution Architect, raise an AWS support case, or follow these instructions:
-
-   1. Generate a SHA1 hash for your password choice.
-   2. Locate line 51 in `main/solution/machine-images/config/infra/provisioners/provision-hail.sh`:  
-       `s/sha1:<salt1>:<hash1>/sha1:<salt2>:<hash2>/`
-   3. Update `<salt2>` and `<hash2>` to match your password’s corresponding values.
-   4. On your local repo, navigate to `main/solution/machine-images`.
-   5. Run `pnpx serverless build-image -s <stage>` to create a new AMI for EMR environment types.
-   6. Use the generated AMI ID in the environment type configuration key AmId. Your selected password becomes active.
-
-   **Note:** EMR workspaces are not available if AppStream is enabled for the deployment.
-
-- RStudio: You can connect to RStudio workspace type by using the template and AMI provided in AWS partner's [repository](https://github.com/RLOpenCatalyst/Service_Workbench_Templates). For more information, refer to the [Create RStudio ALB workspace](/deployment/post_deployment/aws_accounts#creating-rstudio-alb-workspace) section of _Service Workbench Post Deployment Guide_.
-- AWS Elastic Compute Cloud (EC2): EC2 instances are essentially Virtual Machines in the cloud. For more information, see the [EC2 Documentation](https://aws.amazon.com/ec2/).
-
-## Create a Study
-
-### Overview
-
-Studies are datasets that you can tell Service Workbench to preload onto your workspaces. When your workspace has finished provisioning, you will immediately have access to any datasets within Studies associated with that workspace.
-
-### Creating a Study
-
-In the navigation pane, under the Studies tab, choose Create Study. The ID field represents the ID for that particular dataset. Studies can also be associated to projects using the Project ID field. Once the study has been created, you can upload data files with the Upload Files button.
-
-### Setting workspace properties
-
-Once you have a study with datafiles loaded, you can start provisioning workspaces with your study data. In the Studies tab, select one or more studies. The data in these studies is preloaded onto the AWS compute platform. In addition to your own studies, you can also choose from your organization's studies and/or open data studies (publicly available datasets).
-After choosing your desired studies, click Next to create a workspace. Refer to the Workspaces section for documentation on the compute platforms.
-
-### Creating a workspace using study data
-
-Once you have finished determining the properties of your workspace, Service Workbench generates your workspace and preloads it with your study data. You can access it from the Workspaces page by choosing the Connect button on your workspace.
-
-## Code Customization
-
-Start by looking at these files:
-
-- main/packages/services/lib/hello/hello-service.js
-- main/packages/controllers/lib/hello-controller.js
-- main/solution/ui/src/parts/hello/HelloPage.js
-
-They are meant to provide a sample service, a sample controller and a sample UI page.
-
-### Adding a custom Service Catalog product
-
-Follow these steps to add a custom Service Catalog product:
-
-1. Add your custom CloudFormation template in the `addons/addon-base-raas/packages/base-raas-cfn-templates/src/templates/service-catalog` folder.
-2. Add your new product's details in the format specified in the file `addons/addon-base-raas/packages/base-raas-post-deployment/lib/steps/create-service-catalog-portfolio.js` (lines 23-35).
-   **Note**: Line numbers might change in a future release.
-3. Run the `environment-deploy.sh` script.
-
-## Audits
-
-To audit the installed NPM packages, run the following commands:
-
-```bash
-cd <root of git repo>
-pnpm audit
+```json
+{
+    "aws_access_key_id": "YOUR_KEY_ID_HERE",
+    "aws_secret_access_key": "YOUR_ACCESS_KEY_HERE",
+    "region_name": "YOUR_REGION_NAME_HERE"
+}
 ```
 
-Please follow prevailing best practices for auditing your NPM dependencies and fixing them as needed.
+Getting this information is, thankfully, a relatively simple process for Amazon's services. Instructions can be found in the [Handprint project Wiki pages on GitHub](https://github.com/caltechlibrary/handprint/wiki/Creating-credentials-for-use-with-Amazon-Rekognition).  Once you have obtained the two alphanumeric keys and a region identifier string, use a text editor to create a JSON file in the simple format shown above, save that file somewhere on your computer (for the sake of this example, assume it is `myamazoncredentials.json`), and use _two_ commands to make Handprint copy the credentials file for the two different Amazon services currently supported by Handprint:
+```sh
+handprint -a amazon-textract myamazoncredentials.json
+handprint -a amazon-rekognition myamazoncredentials.json
+```
 
----
 
-## Recommended Reading
+##  Usage
 
-- [Serverless Framework for AWS](https://serverless.com/framework/docs/providers/aws/)
-- [Serverless Stack](https://serverless-stack.com/)
-- [Configure Multiple AWS Profiles](https://serverless-stack.com/chapters/configure-multiple-aws-profiles.html)
-- [Serverless Offline](https://github.com/dherault/serverless-offline)
-- [Github documentation](https://git-scm.com/docs)
+Please see the [documentation site](https://caltechlibrary.github.io/handprint) for detailed documentation for Handprint.
+
+
+## Getting help
+
+If you find an issue, please submit it in [the GitHub issue tracker](https://github.com/caltechlibrary/handprint/issues) for this repository.
+
+
+## Contributing
+
+I would be happy to receive your help and participation with enhancing Handprint!  Please visit the [guidelines for contributing](CONTRIBUTING.md) for some tips on getting started.
+
+If you plan on doing any development on Handprint, you may want to install the package dependencies listed in [`requirements-dev.txt`](requirements-dev.txt), e.g., using a command such as the following. This will install dependencies necessary to run `pytest`.
+```
+python3 -m pip install -r requirements-dev.txt
+```
+
 
 ## License
 
-This project is licensed under the terms of the Apache 2.0 license. See [LICENSE](LICENSE).
-Included AWS Lambda functions are licensed under the MIT-0 license. See [LICENSE-LAMBDA](LICENSE-LAMBDA).
+Software produced by the Caltech Library is Copyright © 2018&ndash;2022 California Institute of Technology.  This software is freely distributed under the [BSD 3-clause OSI license](https://opensource.org/licenses/BSD-3-Clause).  Please see the [LICENSE](LICENSE) file for more information.
+
+
+## Authors and history
+
+[Mike Hucka](https://github.com/mhucka) designed and implemented Handprint beginning in mid-2018.
+
+
+## Acknowledgments
+
+The [vector artwork](https://thenounproject.com/search/?q=hand&i=733265) of a hand used as a logo for Handprint was created by [Kevin](https://thenounproject.com/kevn/) for the [Noun Project](https://thenounproject.com).  It is licensed under the Creative Commons [CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/) license.
+
+Handprint benefitted from feedback from several people, notably from Tommy Keswick, Mariella Soprano, Peter Collopy and Stephen Davison.
+
+Handprint makes use of numerous open-source packages, without which it would have been effectively impossible to develop Handprint with the resources we had.  I want to acknowledge this debt.  In alphabetical order, the packages are:
+
+* [aenum](https://pypi.org/project/aenum/) &ndash; advanced enumerations for Python
+* [appdirs](https://github.com/ActiveState/appdirs) &ndash; module for determining appropriate platform-specific directories
+* [boltons](https://github.com/mahmoud/boltons/) &ndash; package of miscellaneous Python utilities
+* [boto3](https://github.com/boto/boto3) &ndash; Amazon AWS SDK for Python
+* [bun](https://github.com/caltechlibrary/bun) &ndash; a set of basic user interface classes and functions
+* [CommonPy](https://github.com/caltechlibrary/commonpy) &ndash; a collection of commonly-useful Python functions
+* [fastnumbers](https://github.com/SethMMorton/fastnumbers) &ndash; number testing and conversion functions
+* [google-api-core, google-api-python-client, google-auth, google-auth-httplib2, google-cloud, google-cloud-vision, googleapis-common-protos, google_api_python_client](https://github.com/googleapis/google-cloud-python) &ndash; Google API libraries 
+* [grpcio](https://grpc.io) &ndash; open-source RPC framework
+* [humanize](https://github.com/jmoiron/humanize) &ndash; make numbers more easily readable by humans
+* [imagesize](https://github.com/shibukawa/imagesize_py) &ndash; determine the dimensions of an image
+* [ipdb](https://github.com/gotcha/ipdb) &ndash; the IPython debugger
+* [matplotlib](https://matplotlib.org) &ndash; a Python 2-D plotting library
+* [numpy](https://numpy.org) &ndash; package for scientific computing in Python
+* [Pillow](https://github.com/python-pillow/Pillow) &ndash; a fork of the Python Imaging Library
+* [plac](http://micheles.github.io/plac/) &ndash; a command line argument parser
+* [psutil](https://github.com/giampaolo/psutil) &ndash; cross-platform package for process and system monitoring in Python
+* [PyMuPDF](https://github.com/pymupdf/PyMuPDF) &ndash; Python bindings for the MuPDF rendering library
+* [requests](http://docs.python-requests.org) &ndash; an HTTP library for Python
+* [Rich](https://rich.readthedocs.io/en/latest/) &ndash; library for writing styled text to the terminal
+* [setuptools](https://github.com/pypa/setuptools) &ndash; library for `setup.py`
+* [Sidetrack](https://github.com/caltechlibrary/sidetrack) &ndash; simple debug logging/tracing package
+* [StringDist](https://github.com/obulkin/string-dist) &ndash; library for calculating string distances
+* [textdistance](https://github.com/orsinium/textdistance) &ndash; compute distances between text sequences
+* [urllib3](https://github.com/urllib3/urllib3) &ndash; Python HTTP library
+* [Validator Collection](https://github.com/insightindustry/validator-collection) &ndash; Python library of 60+ commonly-used validator functions
+* [wheel](https://pypi.org/project/wheel/) &ndash; setuptools extension for building wheels
+
+Finally, I am grateful for computing &amp; institutional resources made available by the California Institute of Technology.
+    
+<div align="center">
+  <a href="https://www.caltech.edu">
+    <img width="120px" src="https://raw.githubusercontent.com/caltechlibrary/handprint/master/.graphics/caltech-round.png">
+  </a>
+</div>
