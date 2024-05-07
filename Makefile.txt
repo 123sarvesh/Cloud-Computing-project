@@ -1,10 +1,8 @@
 # =============================================================================
 # @file    Makefile
 # @brief   Makefile for some steps in creating new releases on GitHub
-# @author  Michael Hucka
-# @date    2020-08-11
-# @license Please see the file named LICENSE in the project directory
-# @website https://github.com/caltechlibrary/handprint
+# @author  Sarvesh Gupta
+# @date    30-04-2024
 # =============================================================================
 
 .ONESHELL: 				# Run all commands in the same shell.
