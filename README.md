@@ -232,10 +232,3 @@ Handprint makes use of numerous open-source packages, without which it would hav
 * [Validator Collection](https://github.com/insightindustry/validator-collection) &ndash; Python library of 60+ commonly-used validator functions
 * [wheel](https://pypi.org/project/wheel/) &ndash; setuptools extension for building wheels
 
-Finally, I am grateful for computing &amp; institutional resources made available by the California Institute of Technology.
-    
-<div align="center">
-  <a href="https://www.caltech.edu">
-    <img width="120px" src="https://raw.githubusercontent.com/caltechlibrary/handprint/master/.graphics/caltech-round.png">
-  </a>
-</div>
