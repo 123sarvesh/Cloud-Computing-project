@@ -229,6 +229,4 @@ Handprint makes use of numerous open-source packages, without which it would hav
 * [StringDist](https://github.com/obulkin/string-dist) &ndash; library for calculating string distances
 * [textdistance](https://github.com/orsinium/textdistance) &ndash; compute distances between text sequences
 * [urllib3](https://github.com/urllib3/urllib3) &ndash; Python HTTP library
-* [Validator Collection](https://github.com/insightindustry/validator-collection) &ndash; Python library of 60+ commonly-used validator functions
-* [wheel](https://pypi.org/project/wheel/) &ndash; setuptools extension for building wheels
 
